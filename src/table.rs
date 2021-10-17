@@ -2,18 +2,23 @@ use std::ops;
 
 use super::types::UIndex;
 
-
-struct Table<T: UIndex + Clone>  {
+pub struct Table<T: UIndex + Clone>  {
     m: usize,
     matrix: Vec<T>,
 }
 
 impl<T: UIndex + Clone> Table<T> {
-    fn new(m: usize) -> Table<T> {
+    pub fn new(m: usize) -> Table<T> {
         Table {m: m, matrix: Vec::new()}
     }
 
-    fn add_row(& mut self, val: T) -> usize {
+    pub fn len(&self) -> T {
+        let n_row: usize = self.matrix.len() / self.m;
+        let row: T = T::from_index(n_row);
+        row
+    }
+
+    pub fn add_row(& mut self, val: T) -> usize {
         let size: usize =  self.matrix.len();
         let row = size / self.m;
         self.matrix.resize(size + self.m, val);
