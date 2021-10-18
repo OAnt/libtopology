@@ -1,11 +1,13 @@
-use super::table::Table;
-use super::table::TableIndex;
+use std::ops::Add;
+use super::table::{Table, TableIndex};
+use super::types::UIndexIterator;
 
 trait CombinatorialMapIndex: TableIndex + Copy + Eq {}
 impl<T> CombinatorialMapIndex for T
 where
     T: TableIndex + Copy + Eq {}
 
+#[derive(PartialEq)]
 enum TransformationType {
     Identity,
     Involution,
@@ -18,6 +20,7 @@ trait CombinatorialMap<T: CombinatorialMapIndex> {
     fn next_helfedge(&self, he: T, level: usize) -> T;
     fn iter(&self, he_0: T, level: usize) -> CombinatorialMapIterator<'_, T>;
     fn get_transformation_type(&self, he: T, level: usize) -> TransformationType;
+    fn is_manifold(&self, level: usize) -> bool;
 }
 
 struct CombinatorialMapIterator<'a, T: CombinatorialMapIndex> {
@@ -43,7 +46,7 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
     }
 }
 
-impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
+impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<T>{
 
     fn new_halfedge(& mut self) -> T {
         let halfedge = self.len(); 
@@ -78,33 +81,76 @@ impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
             TransformationType::Permutation
         }
     }
+
+    fn is_manifold(&self, level: usize) -> bool {
+        let iterator = UIndexIterator{start: T::ZERO, end: self.len()};
+        for he in iterator {
+            if self.get_transformation_type(he, level) != TransformationType::Involution {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_create_triangular_face(){
-        let mut cmap: Table<u32> = Table::new(2);
+    fn create_triangle(cmap: & mut Table<u32>) -> [u32; 3] {
         let he_0 = cmap.new_halfedge();
         let he_1 = cmap.new_halfedge();
         let he_2 = cmap.new_halfedge();
         cmap.link_halfedges(he_0, he_1, 0);
         cmap.link_halfedges(he_1, he_2, 0);
-        for (i, he) in cmap.iter(he_0, 0).enumerate() {
+        [he_0, he_1, he_2]
+    }
+
+    fn create_tetrahedron(cmap: & mut Table<u32>) -> u32 {
+        let triangle_0 = create_triangle(cmap);
+        let triangle_1 = create_triangle(cmap);
+        cmap.link_halfedges(triangle_0[0], triangle_1[0], 1);
+        let triangle_2 = create_triangle(cmap);
+        cmap.link_halfedges(triangle_0[1], triangle_2[0], 1);
+        cmap.link_halfedges(triangle_1[1], triangle_2[1], 1);
+        let triangle_3 = create_triangle(cmap);
+        cmap.link_halfedges(triangle_0[2], triangle_3[1], 1);
+        cmap.link_halfedges(triangle_1[2], triangle_3[2], 1);
+        cmap.link_halfedges(triangle_2[2], triangle_3[0], 1);
+        return triangle_0[0];
+    }
+
+    #[test]
+    fn test_create_triangular_face(){
+        let mut cmap: Table<u32> = Table::new(2);
+        let triangle = create_triangle(& mut cmap);
+        for (i, he) in cmap.iter(triangle[0], 0).enumerate() {
             match i {
-                0 => assert!(he == he_0),
-                1 => assert!(he == he_1),
-                2 => assert!(he == he_2),
+                0 => assert!(he == triangle[0]),
+                1 => assert!(he == triangle[1]),
+                2 => assert!(he == triangle[2]),
                 _ => assert!(false),
             }
         }
     }
 
     #[test]
-    fn test_identity(){
+    fn test_transformations(){
         let mut cmap: Table<u32> = Table::new(2);
-        let he_0 = cmap.new_halfedge();
+        let triangle_0 = create_triangle(& mut cmap);
+        let triangle_1 = create_triangle(& mut cmap);
+        cmap.link_halfedges(triangle_0[0], triangle_1[0], 1);
+        assert!(cmap.get_transformation_type(triangle_0[0], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_0[0], 1) == TransformationType::Involution);
+        assert!(cmap.get_transformation_type(triangle_0[1], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_0[1], 1) == TransformationType::Identity);
+        assert!(cmap.get_transformation_type(triangle_0[2], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_0[2], 1) == TransformationType::Identity);
+        assert!(cmap.get_transformation_type(triangle_1[0], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_1[0], 1) == TransformationType::Involution);
+        assert!(cmap.get_transformation_type(triangle_1[1], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_1[1], 1) == TransformationType::Identity);
+        assert!(cmap.get_transformation_type(triangle_1[2], 0) == TransformationType::Permutation);
+        assert!(cmap.get_transformation_type(triangle_1[2], 1) == TransformationType::Identity);
     }
 }
