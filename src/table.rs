@@ -2,12 +2,17 @@ use std::ops;
 
 use super::types::UIndex;
 
-pub struct Table<T: UIndex + Clone>  {
+pub trait TableIndex: UIndex + Clone{}
+impl<T> TableIndex for T
+where
+    T: UIndex + Clone {}
+
+pub struct Table<T: TableIndex>  {
     m: usize,
     matrix: Vec<T>,
 }
 
-impl<T: UIndex + Clone> Table<T> {
+impl<T: TableIndex> Table<T> {
     pub fn new(m: usize) -> Table<T> {
         Table {m: m, matrix: Vec::new()}
     }
@@ -30,7 +35,7 @@ impl<T: UIndex + Clone> Table<T> {
     }
 }
 
-impl<T: UIndex + Clone> ops::Index<T> for Table<T>{
+impl<T: TableIndex> ops::Index<T> for Table<T>{
     type Output = [T];
 
     fn index(&self, row: T) -> &[T] {
@@ -39,7 +44,7 @@ impl<T: UIndex + Clone> ops::Index<T> for Table<T>{
     }
 }
 
-impl<T: UIndex + Clone> ops::IndexMut<T> for Table<T>{
+impl<T: TableIndex> ops::IndexMut<T> for Table<T>{
     fn index_mut(& mut self, row: T) -> & mut [T] {
         let pos: usize = self.get_row_pos(row);        
         & mut self.matrix[pos..pos+self.m]
