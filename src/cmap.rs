@@ -49,16 +49,7 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
 impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<T>{
 
     fn new_halfedge(& mut self) -> Result<T, ()> {
-        let can_add = self.len(); 
-        match can_add {
-            Ok(halfedge) => {
-                let _halfedge = self.add_row(halfedge);
-                Ok(halfedge)
-            }
-            Err(_e) => {
-                Err(())
-            }
-        }
+        self.add_row()
     }
 
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize){

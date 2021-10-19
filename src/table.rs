@@ -1,12 +1,11 @@
-use std::convert;
 use std::convert::{TryFrom, TryInto};
 use std::ops;
-use std::result;
+use std::result::Result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone{}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy {}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy {}
 
 pub struct Table<T: TableIndex>  {
     pub m: usize,
@@ -22,20 +21,23 @@ impl<T: TableIndex> Table<T> {
         self.matrix.len()
     }
 
-    pub fn len(&self) -> result::Result<T, <T as convert::TryFrom<usize>>::Error > {
-        let n_row: usize = self.matrix.len() / self.m;
-        T::try_from(n_row)
-    }
-
-    pub fn add_row(& mut self, val: T) -> usize {
+    pub fn add_row(& mut self) -> Result<T, ()> {
         let size: usize =  self.matrix.len();
         let row = size / self.m;
-        self.matrix.resize(size + self.m, val);
-        row
+        let can_add = T::try_from(row);
+        match can_add {
+            Ok(val) => {
+                self.matrix.resize(size + self.m, val);
+                return Ok(val);
+            }
+            Err(_e) => {
+                return Err(());
+            }
+        }
     }
 
     fn get_row_pos(&self, row: T) -> usize {
-        let _row: result::Result<usize, <T as convert::TryInto<usize>>::Error> = row.try_into();
+        let _row: Result<usize, <T as TryInto<usize>>::Error> = row.try_into();
         match _row {
             Ok(v) => v * self.m,
             Err(_e) => usize::MAX - self.m,
@@ -72,16 +74,18 @@ mod tests {
     #[test]
     fn test_get_row(){
         let mut t: Table<u32> = Table::new(3);
-        t.add_row(1);
-        assert!(t[0][0] == 1);
-        assert!(t[0][1] == 1);
-        assert!(t[0][2] == 1);
+        let r = t.add_row();
+        assert!(r != Err(()));
+        assert!(t[0][0] == 0);
+        assert!(t[0][1] == 0);
+        assert!(t[0][2] == 0);
     }
 
     #[test]
     fn test_edit_row(){
         let mut t: Table<u32> = Table::new(3);
-        t.add_row(1);
+        let r = t.add_row();
+        assert!(r != Err(()));
         t[0][0] = 2;
         t[0][1] = 3;
         t[0][2] = 4;
@@ -91,11 +95,18 @@ mod tests {
     }
 
     #[test]
+    fn test_conversion_failure(){
+        let t: Table<u32> = Table::new(3);
+    }
+
+    #[test]
     #[should_panic]
     fn test_get_row_out_of_bounds(){
         let mut t: Table<u32> = Table::new(3);
-        t.add_row(1);
-        t.add_row(2);
+        let r = t.add_row();
+        assert!(r != Err(()));
+        let r = t.add_row();
+        assert!(r != Err(()));
         assert!(t[0][t.m] == 1);
     }
 
