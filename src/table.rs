@@ -1,14 +1,15 @@
+use std::convert;
+use std::convert::{TryFrom, TryInto};
 use std::ops;
+use std::result;
 
-use super::types::UIndex;
-
-pub trait TableIndex: UIndex + Clone{}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone{}
 impl<T> TableIndex for T
 where
-    T: UIndex + Clone {}
+    T: TryFrom<usize> + TryInto<usize> + Clone {}
 
 pub struct Table<T: TableIndex>  {
-    m: usize,
+    pub m: usize,
     matrix: Vec<T>,
 }
 
@@ -17,10 +18,13 @@ impl<T: TableIndex> Table<T> {
         Table {m: m, matrix: Vec::new()}
     }
 
-    pub fn len(&self) -> T {
+    pub fn bare_len(&self) -> usize {
+        self.matrix.len()
+    }
+
+    pub fn len(&self) -> result::Result<T, <T as convert::TryFrom<usize>>::Error > {
         let n_row: usize = self.matrix.len() / self.m;
-        let row: T = T::from_index(n_row);
-        row
+        T::try_from(n_row)
     }
 
     pub fn add_row(& mut self, val: T) -> usize {
@@ -31,7 +35,11 @@ impl<T: TableIndex> Table<T> {
     }
 
     fn get_row_pos(&self, row: T) -> usize {
-        row.as_index() * self.m
+        let _row: result::Result<usize, <T as convert::TryInto<usize>>::Error> = row.try_into();
+        match _row {
+            Ok(v) => v * self.m,
+            Err(_e) => usize::MAX - self.m,
+        }
     }
 }
 

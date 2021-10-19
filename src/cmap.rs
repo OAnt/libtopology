@@ -1,6 +1,6 @@
 use std::ops::Add;
+use std::result::Result;
 use super::table::{Table, TableIndex};
-use super::types::UIndexIterator;
 
 trait CombinatorialMapIndex: TableIndex + Copy + Eq {}
 impl<T> CombinatorialMapIndex for T
@@ -15,7 +15,7 @@ enum TransformationType {
 }
 
 trait CombinatorialMap<T: CombinatorialMapIndex> {
-    fn new_halfedge(& mut self) -> T;
+    fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn next_helfedge(&self, he: T, level: usize) -> T;
     fn iter(&self, he_0: T, level: usize) -> CombinatorialMapIterator<'_, T>;
@@ -48,11 +48,17 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
 
 impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<T>{
 
-    fn new_halfedge(& mut self) -> T {
-        let halfedge = self.len(); 
-        let _halfedge = self.add_row(halfedge);
-        assert!(halfedge == T::from_index(_halfedge));
-        halfedge
+    fn new_halfedge(& mut self) -> Result<T, ()> {
+        let can_add = self.len(); 
+        match can_add {
+            Ok(halfedge) => {
+                let _halfedge = self.add_row(halfedge);
+                Ok(halfedge)
+            }
+            Err(_e) => {
+                Err(())
+            }
+        }
     }
 
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize){
@@ -83,9 +89,9 @@ impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<
     }
 
     fn is_manifold(&self, level: usize) -> bool {
-        let iterator = UIndexIterator{start: T::ZERO, end: self.len()};
-        for he in iterator {
-            if self.get_transformation_type(he, level) != TransformationType::Involution {
+        for idx in (0..self.bare_len()).step_by(self.m) {
+            // if we could not convert we would not have been able to add the row already
+            if self.get_transformation_type(T::try_from(idx).ok().unwrap(), level) != TransformationType::Involution {
                 return false;
             }
         }
@@ -98,9 +104,9 @@ mod tests {
     use super::*;
 
     fn create_triangle(cmap: & mut Table<u32>) -> [u32; 3] {
-        let he_0 = cmap.new_halfedge();
-        let he_1 = cmap.new_halfedge();
-        let he_2 = cmap.new_halfedge();
+        let he_0 = cmap.new_halfedge().unwrap();
+        let he_1 = cmap.new_halfedge().unwrap();
+        let he_2 = cmap.new_halfedge().unwrap();
         cmap.link_halfedges(he_0, he_1, 0);
         cmap.link_halfedges(he_1, he_2, 0);
         [he_0, he_1, he_2]
