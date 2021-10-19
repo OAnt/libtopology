@@ -1,11 +1,12 @@
 use std::convert::{TryFrom, TryInto};
+use std::fmt::Display;
 use std::ops;
 use std::result::Result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy {}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + Display {}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + Display {}
 
 pub struct Table<T: TableIndex>  {
     pub m: usize,
@@ -36,11 +37,11 @@ impl<T: TableIndex> Table<T> {
         }
     }
 
-    fn get_row_pos(&self, row: T) -> usize {
+    fn get_row_pos(&self, row: T) -> Result<usize, T> {
         let _row: Result<usize, <T as TryInto<usize>>::Error> = row.try_into();
         match _row {
-            Ok(v) => v * self.m,
-            Err(_e) => usize::MAX - self.m,
+            Ok(v) => Ok(v * self.m),
+            Err(_e) => Err(row)
         }
     }
 }
@@ -49,15 +50,21 @@ impl<T: TableIndex> ops::Index<T> for Table<T>{
     type Output = [T];
 
     fn index(&self, row: T) -> &[T] {
-        let pos: usize = self.get_row_pos(row);        
-        &self.matrix[pos..pos+self.m]
+        let can_access = self.get_row_pos(row);
+        match can_access {
+            Ok(pos) => &self.matrix[pos..pos+self.m],
+            Err(orig) => panic!("{} cannot be used as an index", orig)
+        }
     }
 }
 
 impl<T: TableIndex> ops::IndexMut<T> for Table<T>{
     fn index_mut(& mut self, row: T) -> & mut [T] {
-        let pos: usize = self.get_row_pos(row);        
-        & mut self.matrix[pos..pos+self.m]
+        let can_access = self.get_row_pos(row);
+        match can_access {
+            Ok(pos) => & mut self.matrix[pos..pos+self.m],
+            Err(orig) => panic!("{} cannot be used as an index", orig)
+        }
     }
 }
 
@@ -96,7 +103,23 @@ mod tests {
 
     #[test]
     fn test_conversion_failure(){
-        let t: Table<u32> = Table::new(3);
+        let mut t: Table<u8> = Table::new(3);
+        for i in 0..=255 {
+            let r = t.add_row();
+            assert!(r != Err(()));
+            assert!(t[i][0] == i);
+            assert!(t[i][1] == i);
+            assert!(t[i][2] == i);
+        }
+        let r = t.add_row(); 
+        assert!(r == Err(()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_index_failure(){
+        let mut t: Table<i8> = Table::new(3);
+        t[-1][0] = 1;
     }
 
     #[test]
