@@ -80,7 +80,7 @@ impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<
     }
 
     fn is_manifold(&self, level: usize) -> bool {
-        for idx in (0..self.bare_len()).step_by(self.m) {
+        for idx in 0..self.len() {
             // if we could not convert we would not have been able to add the row already
             if self.get_transformation_type(T::try_from(idx).ok().unwrap(), level) != TransformationType::Involution {
                 return false;
@@ -149,5 +149,12 @@ mod tests {
         assert!(cmap.get_transformation_type(triangle_1[1], 1) == TransformationType::Identity);
         assert!(cmap.get_transformation_type(triangle_1[2], 0) == TransformationType::Permutation);
         assert!(cmap.get_transformation_type(triangle_1[2], 1) == TransformationType::Identity);
+    }
+
+    #[test]
+    fn test_manifold(){
+        let mut cmap: Table<u32> = Table::new(2);
+        create_tetrahedron(& mut cmap);
+        assert!(cmap.is_manifold(1));
     }
 }

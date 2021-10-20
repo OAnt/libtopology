@@ -9,7 +9,7 @@ where
     T: TryFrom<usize> + TryInto<usize> + Clone + Copy + Display {}
 
 pub struct Table<T: TableIndex>  {
-    pub m: usize,
+    m: usize,
     matrix: Vec<T>,
 }
 
@@ -18,8 +18,8 @@ impl<T: TableIndex> Table<T> {
         Table {m: m, matrix: Vec::new()}
     }
 
-    pub fn bare_len(&self) -> usize {
-        self.matrix.len()
+    pub fn len(&self) -> usize {
+        self.matrix.len() / self.m
     }
 
     pub fn add_row(& mut self) -> Result<T, ()> {
