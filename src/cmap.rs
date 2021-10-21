@@ -2,19 +2,19 @@ use std::ops::Add;
 use std::result::Result;
 use super::table::{Table, TableIndex};
 
-trait CombinatorialMapIndex: TableIndex + Copy + Eq {}
+pub trait CombinatorialMapIndex: TableIndex + Copy + Eq {}
 impl<T> CombinatorialMapIndex for T
 where
     T: TableIndex + Copy + Eq {}
 
 #[derive(PartialEq)]
-enum TransformationType {
+pub enum TransformationType {
     Identity,
     Involution,
     Permutation,
 }
 
-trait CombinatorialMap<T: CombinatorialMapIndex> {
+pub trait CombinatorialMap<T: CombinatorialMapIndex> {
     fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn next_helfedge(&self, he: T, level: usize) -> T;
@@ -23,7 +23,7 @@ trait CombinatorialMap<T: CombinatorialMapIndex> {
     fn is_manifold(&self, level: usize) -> bool;
 }
 
-struct CombinatorialMapIterator<'a, T: CombinatorialMapIndex> {
+pub struct CombinatorialMapIterator<'a, T: CombinatorialMapIndex> {
     cmap: &'a dyn CombinatorialMap<T>,
     level: usize,
     active: T,
@@ -121,7 +121,9 @@ mod tests {
     fn test_create_triangular_face(){
         let mut cmap: Table<u32> = Table::new(2);
         let triangle = create_triangle(& mut cmap);
+        let mut n_he: u32 = 0;
         for (i, he) in cmap.iter(triangle[0], 0).enumerate() {
+            n_he += 1;
             match i {
                 0 => assert!(he == triangle[0]),
                 1 => assert!(he == triangle[1]),
@@ -129,6 +131,7 @@ mod tests {
                 _ => assert!(false),
             }
         }
+        assert!(n_he == 3);
     }
 
     #[test]
@@ -157,4 +160,5 @@ mod tests {
         create_tetrahedron(& mut cmap);
         assert!(cmap.is_manifold(1));
     }
+
 }
