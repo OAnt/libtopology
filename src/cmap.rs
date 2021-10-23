@@ -18,14 +18,14 @@ pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]> {
     fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn next_helfedge(&self, he: T, level: usize) -> T;
-    fn iter(&self, he_0: T, op: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_ , T>;
+    fn iter(&self, he_0: T, transformation: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_ , T>;
     fn get_transformation_type(&self, he: T, level: usize) -> TransformationType;
     fn is_manifold(&self, level: usize) -> bool;
 }
 
 pub struct CombinatorialMapIterator<'a, T: CombinatorialMapIndex> {
     cmap: &'a dyn CombinatorialMap<T>,
-    operator: fn(& dyn CombinatorialMap<T>, T) -> T,
+    transformation: fn(& dyn CombinatorialMap<T>, T) -> T,
     active: T,
     end: T,
     done: bool,
@@ -39,7 +39,7 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
             return None;
         }else{
             let val = self.active;
-            self.active = (self.operator)(self.cmap, val);
+            self.active = (self.transformation)(self.cmap, val);
             self.done = self.active == self.end;
             return Some(val);
         }
@@ -58,8 +58,8 @@ impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
         self[he_1][level] = tmp;
     }
 
-    fn iter(&self, he_0: T, operator: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_, T> {
-        CombinatorialMapIterator {cmap: self, operator: operator, active: he_0, end: he_0, done: false}
+    fn iter(&self, he_0: T, transformation: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_, T> {
+        CombinatorialMapIterator {cmap: self, transformation: transformation, active: he_0, end: he_0, done: false}
     }
 
     fn next_helfedge(&self, he: T, level: usize) -> T {
@@ -162,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn test_operator(){
+    fn test_transformation(){
         let mut cmap: Table<u32> = Table::new(2);
         let tetrahedron = create_tetrahedron(& mut cmap);
         let mut n_he: u32 = 0;
