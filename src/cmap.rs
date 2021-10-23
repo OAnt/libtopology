@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::Index;
 use std::result::Result;
 use super::table::{Table, TableIndex};
 
@@ -14,18 +14,18 @@ pub enum TransformationType {
     Permutation,
 }
 
-pub trait CombinatorialMap<T: CombinatorialMapIndex> {
+pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]> {
     fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn next_helfedge(&self, he: T, level: usize) -> T;
-    fn iter(&self, he_0: T, level: usize) -> CombinatorialMapIterator<'_, T>;
+    fn iter(&self, he_0: T, op: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_ , T>;
     fn get_transformation_type(&self, he: T, level: usize) -> TransformationType;
     fn is_manifold(&self, level: usize) -> bool;
 }
 
 pub struct CombinatorialMapIterator<'a, T: CombinatorialMapIndex> {
     cmap: &'a dyn CombinatorialMap<T>,
-    level: usize,
+    operator: fn(& dyn CombinatorialMap<T>, T) -> T,
     active: T,
     end: T,
     done: bool,
@@ -39,14 +39,14 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
             return None;
         }else{
             let val = self.active;
-            self.active = self.cmap.next_helfedge(val, self.level);
+            self.active = (self.operator)(self.cmap, val);
             self.done = self.active == self.end;
             return Some(val);
         }
     }
 }
 
-impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<T>{
+impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
 
     fn new_halfedge(& mut self) -> Result<T, ()> {
         self.add_row()
@@ -58,8 +58,8 @@ impl<T: CombinatorialMapIndex + Add<Output = T> > CombinatorialMap<T> for Table<
         self[he_1][level] = tmp;
     }
 
-    fn iter(&self, he_0: T, level: usize) -> CombinatorialMapIterator<'_, T> {
-        CombinatorialMapIterator {cmap: self, level: level, active: he_0, end: he_0, done: false}
+    fn iter(&self, he_0: T, operator: fn(& dyn CombinatorialMap<T>, T) -> T) -> CombinatorialMapIterator<'_, T> {
+        CombinatorialMapIterator {cmap: self, operator: operator, active: he_0, end: he_0, done: false}
     }
 
     fn next_helfedge(&self, he: T, level: usize) -> T {
@@ -109,11 +109,11 @@ mod tests {
         cmap.link_halfedges(triangle_0[0], triangle_1[0], 1);
         let triangle_2 = create_triangle(cmap);
         cmap.link_halfedges(triangle_0[1], triangle_2[0], 1);
-        cmap.link_halfedges(triangle_1[1], triangle_2[1], 1);
+        cmap.link_halfedges(triangle_1[2], triangle_2[1], 1);
         let triangle_3 = create_triangle(cmap);
-        cmap.link_halfedges(triangle_0[2], triangle_3[1], 1);
-        cmap.link_halfedges(triangle_1[2], triangle_3[2], 1);
-        cmap.link_halfedges(triangle_2[2], triangle_3[0], 1);
+        cmap.link_halfedges(triangle_0[2], triangle_3[0], 1);
+        cmap.link_halfedges(triangle_1[1], triangle_3[2], 1);
+        cmap.link_halfedges(triangle_2[2], triangle_3[1], 1);
         return triangle_0[0];
     }
 
@@ -122,7 +122,7 @@ mod tests {
         let mut cmap: Table<u32> = Table::new(2);
         let triangle = create_triangle(& mut cmap);
         let mut n_he: u32 = 0;
-        for (i, he) in cmap.iter(triangle[0], 0).enumerate() {
+        for (i, he) in cmap.iter(triangle[0], |cmap: & dyn CombinatorialMap<u32>, he: u32| {cmap[he][0]}).enumerate() {
             n_he += 1;
             match i {
                 0 => assert!(he == triangle[0]),
@@ -159,6 +159,23 @@ mod tests {
         let mut cmap: Table<u32> = Table::new(2);
         create_tetrahedron(& mut cmap);
         assert!(cmap.is_manifold(1));
+    }
+
+    #[test]
+    fn test_operator(){
+        let mut cmap: Table<u32> = Table::new(2);
+        let tetrahedron = create_tetrahedron(& mut cmap);
+        let mut n_he: u32 = 0;
+        for (i, he) in cmap.iter(tetrahedron, |cmap: & dyn CombinatorialMap<u32>, he: u32| {cmap[cmap[he][1]][0]}).enumerate() {
+            n_he += 1;
+            match i {
+                0 => assert!(he == 0),
+                1 => assert!(he == 4),
+                2 => assert!(he == 9),
+                _ => assert!(false),
+            }
+        }
+        assert!(n_he == 3);
     }
 
 }
