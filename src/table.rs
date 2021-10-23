@@ -13,6 +13,8 @@ pub trait Linked: Clone + fmt::Display + Copy{
     type Type: TableIndex;
     fn new(t: Self::Type) -> Self;
     fn link(table: & mut Table<Self>, lhs: Self::Type, rhs: Self::Type, level: usize);
+    fn try_from(u: usize) -> Result<Self::Type,  <Self::Type as TryFrom<usize>>::Error>;
+    fn next(&self) -> Self::Type;
 }
 
 pub struct Table<L: Linked>  {
@@ -122,7 +124,7 @@ impl<L: Linked> fmt::Display for Table<L>{
 }
 
 #[derive(Copy, Clone)]
-struct Cell<T: TableIndex> {
+pub struct Cell<T: TableIndex> {
     fwd: T,
 }
 
@@ -144,9 +146,14 @@ impl<T: TableIndex> Linked for Cell<T> {
         table[lhs][level].fwd = rhs;
         table[rhs][level].fwd = tmp;
     }
-}
 
-impl<T: TableIndex> Cell<T> { 
+    fn try_from(u: usize) -> Result<T,  <T as TryFrom<usize>>::Error>{
+        T::try_from(u)
+    }
+    
+    fn next(&self) -> T {
+        self.fwd
+    }
 }
 
 #[cfg(test)]
