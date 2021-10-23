@@ -1,3 +1,4 @@
+use std::iter;
 use std::ops::Index;
 use std::result::Result;
 use super::table::{Table, TableIndex};
@@ -44,6 +45,21 @@ impl<'a, T: CombinatorialMapIndex> Iterator for CombinatorialMapIterator<'a, T> 
             return Some(val);
         }
     }
+}
+
+pub fn transformation_iterator<'a, T: CombinatorialMapIndex>(
+    cmap: & 'a dyn CombinatorialMap<T>,
+    he_0: T,
+    transformation: fn(& dyn CombinatorialMap<T>, T) -> T) -> impl Iterator<Item=T> + 'a
+{
+    iter::successors(Some(he_0), move |he: &T| {
+        let next_he = transformation(cmap, *he);
+        if next_he == he_0 {
+            None
+        }else{
+            Some(next_he)
+        }
+    })
 }
 
 impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
@@ -135,6 +151,23 @@ mod tests {
     }
 
     #[test]
+    fn test_create_triangular_face_2(){
+        let mut cmap: Table<u32> = Table::new(2);
+        let triangle = create_triangle(& mut cmap);
+        let mut n_he: u32 = 0;
+        for (i, he) in transformation_iterator(&cmap, triangle[0], |cmap: & dyn CombinatorialMap<u32>, he: u32| {cmap[he][0]}).enumerate() {
+            n_he += 1;
+            match i {
+                0 => assert!(he == triangle[0]),
+                1 => assert!(he == triangle[1]),
+                2 => assert!(he == triangle[2]),
+                _ => assert!(false),
+            }
+        }
+        assert!(n_he == 3);
+    }
+
+    #[test]
     fn test_transformations(){
         let mut cmap: Table<u32> = Table::new(2);
         let triangle_0 = create_triangle(& mut cmap);
@@ -167,6 +200,23 @@ mod tests {
         let tetrahedron = create_tetrahedron(& mut cmap);
         let mut n_he: u32 = 0;
         for (i, he) in cmap.iter(tetrahedron, |cmap: & dyn CombinatorialMap<u32>, he: u32| {cmap[cmap[he][1]][0]}).enumerate() {
+            n_he += 1;
+            match i {
+                0 => assert!(he == 0),
+                1 => assert!(he == 4),
+                2 => assert!(he == 9),
+                _ => assert!(false),
+            }
+        }
+        assert!(n_he == 3);
+    }
+
+    #[test]
+    fn test_transformation_2(){
+        let mut cmap: Table<u32> = Table::new(2);
+        let tetrahedron = create_tetrahedron(& mut cmap);
+        let mut n_he: u32 = 0;
+        for (i, he) in transformation_iterator(&cmap, tetrahedron, |cmap: & dyn CombinatorialMap<u32>, he: u32| {cmap[cmap[he][1]][0]}).enumerate() {
             n_he += 1;
             match i {
                 0 => assert!(he == 0),
