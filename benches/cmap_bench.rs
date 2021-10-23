@@ -1,8 +1,8 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use libtopology::table::Table;
-use libtopology::cmap::{CombinatorialMap, transformation_iterator};
+use libtopology::cmap::CombinatorialMap;
 
-fn next_helfedge_in_face(cmap: & dyn CombinatorialMap<u32>, he: u32) -> u32{
+fn next_helfedge_in_face(cmap: & Table<u32>, he: u32) -> u32{
     cmap[he][0]
 }
 
@@ -42,21 +42,12 @@ pub fn level_0_iterator(cmap: & Table<u32>, _he: u32, n_he_tgt: u32){
     assert!(n_he == n_he_tgt);
 }
 
-pub fn level_0_successor(cmap: & Table<u32>, _he: u32, n_he_tgt: u32){
-    let mut n_he = 0;
-    for _he in transformation_iterator(cmap, _he, next_helfedge_in_face) {
-        n_he += 1;
-    }
-    assert!(n_he == n_he_tgt);
-}
-
 fn level_0_benchmark(c: & mut Criterion){
     let mut cmap: Table<u32> = Table::new(2);
     let size = 100;
     let prev_he = create_polygon(& mut cmap, size);
     c.bench_function("Level 0 loop", |b| b.iter(|| level_0_loop(& cmap, prev_he, size)));
     c.bench_function("Level 0 Iterator", |b| b.iter(|| level_0_iterator(& cmap, prev_he, size)));
-    c.bench_function("Level 0 successor", |b| b.iter(|| level_0_successor(& cmap, prev_he, size)));
 }
 
 criterion_group!(benches, level_0_benchmark);

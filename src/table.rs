@@ -1,12 +1,13 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::iter;
 use std::ops;
 use std::result::Result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display {}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
 
 pub struct Table<T: TableIndex>  {
     m: usize,
@@ -35,6 +36,17 @@ impl<T: TableIndex> Table<T> {
                 return Err(());
             }
         }
+    }
+
+    pub fn iter<'a>(& 'a self, start: T, transform: fn(& Self, T) -> T) -> impl Iterator<Item=T> + 'a{
+        iter::successors(Some(start), move |he: &T| {
+            let next_he = transform(self, *he);
+            if next_he == start {
+                None
+            }else{
+                Some(next_he)
+            }
+        })
     }
 
     fn get_row_pos(&self, row: T) -> Result<usize, T> {
