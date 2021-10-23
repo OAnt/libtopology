@@ -1,13 +1,33 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::iter;
+use std::mem;
 use std::ops;
 use std::result::Result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
+pub trait Linkable {
+    fn link(lhs: & mut Self, rhs: Self) -> Self;
+}
+
+macro_rules! linkable_impl_uint {
+    ($($t:ty)*) => ($(
+        impl Linkable for $t {
+        
+            fn link(lhs: & mut $t, rhs: $t) -> $t{
+                let tmp: $t = *lhs;
+                *lhs = rhs;
+                tmp
+            }
+        }
+    )*)
+}
+
+linkable_impl_uint!{ u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + Linkable{}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + Linkable{}
 
 pub struct Table<T: TableIndex>  {
     m: usize,
