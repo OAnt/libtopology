@@ -99,21 +99,41 @@ impl<T: TableIndex> fmt::Display for Table<T>{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let max: f64 = self.len() as f64;
         let n_digits = max.log10() as usize + 1;
-        let res = fmt_column_as_row(0..self.len(), n_digits, f); 
+        let mut res = fmt_column_as_row(0..self.len(), n_digits, f); 
         match res {
             Err(e) => return Err(e),
             _ => {}
         }
         for i in 0..self.m {
-            let res = fmt_column_as_row((0..self.len()).map(|j| self.matrix[self.m * j + i]), n_digits, f);
+            res = fmt_column_as_row((0..self.len()).map(|j| self.matrix[self.m * j + i]), n_digits, f);
             match res {
                 Err(e) => return Err(e),
                 _ => {}
             }
         }
-        write!(f, "")
+        res
     }
 }
+
+pub trait Linkable: TableIndex {
+    fn link(table: & mut Table<Self>, lhs: Self, rhs: Self, level: usize);
+}
+
+macro_rules! linkable_impl_int {
+    ($($t:ty)*) => ($(
+        impl Linkable for $t {
+        
+            fn link(table: & mut Table<$t>, lhs: $t, rhs: $t, level: usize){
+
+                let tmp: $t = table[lhs][level];
+                table[lhs][level] = rhs;
+                table[rhs][level] = tmp;
+            }
+        }
+    )*)
+}
+
+linkable_impl_int!{ u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 #[cfg(test)]
 mod tests {

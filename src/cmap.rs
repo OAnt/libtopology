@@ -1,11 +1,78 @@
+use std::convert;
+use std::fmt;
 use std::ops::Index;
 use std::result::Result;
 use super::table::{Table, TableIndex};
 
-pub trait CombinatorialMapIndex: TableIndex + Copy {}
+pub trait Linkable
+where
+    Self: TableIndex,
+{
+    type Input;
+    fn link(table: & mut Table<Self>, lhs: Self::Input, rhs: Self::Input, level: usize);
+}
+
+pub trait SinglyLinked {}
+macro_rules! singly_linked_impl {
+    ($($t:ty)*) => ($(
+        impl SinglyLinked for $t {}
+    )*)
+}
+singly_linked_impl!{ u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
+impl<T: TableIndex + SinglyLinked> Linkable for T {
+    type Input = T;
+
+    fn link(table: & mut Table<T>, lhs: T, rhs: T, level: usize){
+
+        let tmp: T = table[lhs][level];
+        table[lhs][level] = rhs;
+        table[rhs][level] = tmp;
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct Pair<T: TableIndex> {
+    fwd: T,
+    bwd: T,
+}
+
+impl<T: TableIndex> fmt::Display for Pair<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.fwd, self.bwd)
+    }
+}
+
+impl<T: TableIndex> convert::TryFrom<usize> for Pair<T> {
+    type Error = <T as convert::TryFrom<usize>>::Error;
+    fn try_from(val: usize) -> Result<Self, Self::Error> {
+        let cval = T::try_from(val);
+        match cval {
+            Ok(t) => Ok(Pair{fwd: t, bwd: t}),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+impl<T: TableIndex> convert::TryInto<usize> for Pair<T> {
+    type Error = <T as convert::TryInto<usize>>::Error;
+    fn try_into(self) -> Result<usize, Self::Error> {
+        self.fwd.try_into()
+    }
+}
+
+//impl<T: TableIndex> Linkable for Pair<T> {
+    //type Input = T;
+    //fn link(table: & mut Table<Pair<T>>, lhs: T, rhs: T, level: usize){
+        //let next: Pair<T> = table[lhs][level];
+    //}
+//}
+
+pub trait CombinatorialMapIndex: TableIndex + Copy + Linkable{}
 impl<T> CombinatorialMapIndex for T
 where
-    T: TableIndex + Copy + Eq {}
+    T: TableIndex + Copy + Eq + Linkable<Input=T>{}
 
 #[derive(PartialEq)]
 pub enum TransformationType {
@@ -14,23 +81,27 @@ pub enum TransformationType {
     Permutation,
 }
 
-pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]> {
+pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]>
+where
+    T: Linkable<Input=T>
+{
     fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn get_transformation_type(&self, he: T, transform: & dyn Fn(& dyn CombinatorialMap<T>, T) -> T) -> TransformationType;
     fn is_manifold(&self, level: usize) -> bool;
 }
 
-impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
+impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>
+where
+    T: Linkable<Input=T>
+{
 
     fn new_halfedge(& mut self) -> Result<T, ()> {
         self.add_row()
     }
 
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize){
-        let tmp: T = self[he_0][level];
-        self[he_0][level] = he_1;
-        self[he_1][level] = tmp;
+        Linkable::link(self, he_0, he_1, level);
     }
 
     fn get_transformation_type(&self, he: T, transform: & dyn Fn(& dyn CombinatorialMap<T>, T) -> T) -> TransformationType {
@@ -146,5 +217,29 @@ mod tests {
             }
         }
         assert!(n_he == 3);
+    }
+
+    #[test]
+    fn test_two_way(){
+        let mut fwd: Table<u32> = Table::new(2);
+        let mut bwd: Table<u32> = Table::new(2);
+        let mut prev_he_fwd = None;
+        let mut prev_he_bwd = None;
+        for _i in 0..10 {
+            let he_fwd = fwd.new_halfedge().unwrap();
+            let he_bwd = bwd.new_halfedge().unwrap();
+            match prev_he_fwd {
+                Some(_prev_he) => fwd.link_halfedges(_prev_he, he_fwd, 0),
+                None => {},
+            }
+            match prev_he_bwd {
+                Some(_prev_he) => bwd.link_halfedges(he_bwd, _prev_he, 0),
+                None => {},
+            }
+            prev_he_fwd = Some(he_fwd);
+            prev_he_bwd = Some(he_bwd);
+        }
+        println!("{}", fwd);
+        println!("{}", bwd);
     }
 }
