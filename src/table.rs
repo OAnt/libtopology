@@ -9,13 +9,19 @@ impl<T> TableIndex for T
 where
     T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
 
-pub struct Table<T: TableIndex>  {
-    m: usize,
-    matrix: Vec<T>,
+pub trait Linked: Clone + fmt::Display + Copy{
+    type Type: TableIndex;
+    fn new(t: Self::Type) -> Self;
+    fn link(table: & mut Table<Self>, lhs: Self::Type, rhs: Self::Type, level: usize);
 }
 
-impl<T: TableIndex> Table<T> {
-    pub fn new(m: usize) -> Table<T> {
+pub struct Table<L: Linked>  {
+    m: usize,
+    matrix: Vec<L>,
+}
+
+impl<L: Linked> Table<L> {
+    pub fn new(m: usize) -> Table<L> {
         Table {m: m, matrix: Vec::new()}
     }
 
@@ -23,13 +29,13 @@ impl<T: TableIndex> Table<T> {
         self.matrix.len() / self.m
     }
 
-    pub fn add_row(& mut self) -> Result<T, ()> {
+    pub fn add_row(& mut self) -> Result<L::Type, ()> {
         let size: usize =  self.matrix.len();
         let row = size / self.m;
-        let can_add = T::try_from(row);
+        let can_add = L::Type::try_from(row);
         match can_add {
             Ok(val) => {
-                self.matrix.resize(size + self.m, val);
+                self.matrix.resize(size + self.m, L::new(val));
                 return Ok(val);
             }
             Err(_e) => {
@@ -38,8 +44,8 @@ impl<T: TableIndex> Table<T> {
         }
     }
 
-    pub fn iter<'a>(& 'a self, start: T, transform: fn(& Self, T) -> T) -> impl Iterator<Item=T> + 'a{
-        iter::successors(Some(start), move |he: &T| {
+    pub fn iter<'a>(& 'a self, start: L::Type, transform: fn(& Self, L::Type) -> L::Type) -> impl Iterator<Item=L::Type> + 'a{
+        iter::successors(Some(start), move |he: &L::Type| {
             let next_he = transform(self, *he);
             if next_he == start {
                 None
@@ -49,8 +55,8 @@ impl<T: TableIndex> Table<T> {
         })
     }
 
-    fn get_row_pos(&self, row: T) -> Result<usize, T> {
-        let _row: Result<usize, <T as TryInto<usize>>::Error> = row.try_into();
+    fn get_row_pos(&self, row: L::Type) -> Result<usize, L::Type> {
+        let _row: Result<usize, <L::Type as TryInto<usize>>::Error> = row.try_into();
         match _row {
             Ok(v) => Ok(v * self.m),
             Err(_e) => Err(row)
@@ -58,10 +64,10 @@ impl<T: TableIndex> Table<T> {
     }
 }
 
-impl<T: TableIndex> ops::Index<T> for Table<T>{
-    type Output = [T];
+impl<L: Linked> ops::Index<L::Type> for Table<L>{
+    type Output = [L];
 
-    fn index(&self, row: T) -> &[T] {
+    fn index(&self, row: L::Type) -> &[L] {
         let can_access = self.get_row_pos(row);
         match can_access {
             Ok(pos) => &self.matrix[pos..pos+self.m],
@@ -70,8 +76,8 @@ impl<T: TableIndex> ops::Index<T> for Table<T>{
     }
 }
 
-impl<T: TableIndex> ops::IndexMut<T> for Table<T>{
-    fn index_mut(& mut self, row: T) -> & mut [T] {
+impl<L: Linked> ops::IndexMut<L::Type> for Table<L>{
+    fn index_mut(& mut self, row: L::Type) -> & mut [L] {
         let can_access = self.get_row_pos(row);
         match can_access {
             Ok(pos) => & mut self.matrix[pos..pos+self.m],
@@ -94,7 +100,7 @@ where
     write!(f, "\n")
 }
 
-impl<T: TableIndex> fmt::Display for Table<T>{
+impl<L: Linked> fmt::Display for Table<L>{
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let max: f64 = self.len() as f64;
@@ -115,25 +121,33 @@ impl<T: TableIndex> fmt::Display for Table<T>{
     }
 }
 
-pub trait Linkable: TableIndex {
-    fn link(table: & mut Table<Self>, lhs: Self, rhs: Self, level: usize);
+#[derive(Copy, Clone)]
+struct Cell<T: TableIndex> {
+    fwd: T,
 }
 
-macro_rules! linkable_impl_int {
-    ($($t:ty)*) => ($(
-        impl Linkable for $t {
-        
-            fn link(table: & mut Table<$t>, lhs: $t, rhs: $t, level: usize){
-
-                let tmp: $t = table[lhs][level];
-                table[lhs][level] = rhs;
-                table[rhs][level] = tmp;
-            }
-        }
-    )*)
+impl<T: TableIndex> fmt::Display for Cell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.fwd)
+    }
 }
 
-linkable_impl_int!{ u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+impl<T: TableIndex> Linked for Cell<T> {
+    type Type = T;
+
+    fn new(t: T) -> Cell<T> {
+        Cell{fwd: t}
+    }
+
+    fn link(table: & mut Table<Cell<T> >, lhs: T, rhs: T, level: usize){
+        let tmp: T = table[lhs][level].fwd;
+        table[lhs][level].fwd = rhs;
+        table[rhs][level].fwd = tmp;
+    }
+}
+
+impl<T: TableIndex> Cell<T> { 
+}
 
 #[cfg(test)]
 mod tests {
@@ -141,42 +155,42 @@ mod tests {
 
     #[test]
     fn test_new_table(){
-        let t: Table<u32> = Table::new(3);
+        let t: Table<Cell<u32>> = Table::new(3);
         assert!(t.m == 3 && t.matrix.len() == 0);
     }
 
     #[test]
     fn test_get_row(){
-        let mut t: Table<u32> = Table::new(3);
+        let mut t: Table<Cell<u32>> = Table::new(3);
         let r = t.add_row();
         assert!(r != Err(()));
-        assert!(t[0][0] == 0);
-        assert!(t[0][1] == 0);
-        assert!(t[0][2] == 0);
+        assert!(t[0][0].fwd == 0);
+        assert!(t[0][1].fwd == 0);
+        assert!(t[0][2].fwd == 0);
     }
 
     #[test]
     fn test_edit_row(){
-        let mut t: Table<u32> = Table::new(3);
+        let mut t: Table<Cell<u32>> = Table::new(3);
         let r = t.add_row();
         assert!(r != Err(()));
-        t[0][0] = 2;
-        t[0][1] = 3;
-        t[0][2] = 4;
-        assert!(t.matrix[0] == 2);
-        assert!(t.matrix[1] == 3);
-        assert!(t.matrix[2] == 4);
+        t[0][0].fwd = 2;
+        t[0][1].fwd = 3;
+        t[0][2].fwd = 4;
+        assert!(t.matrix[0].fwd == 2);
+        assert!(t.matrix[1].fwd == 3);
+        assert!(t.matrix[2].fwd == 4);
     }
 
     #[test]
     fn test_conversion_failure(){
-        let mut t: Table<u8> = Table::new(3);
+        let mut t: Table<Cell<u8>> = Table::new(3);
         for i in 0..=255 {
             let r = t.add_row();
             assert!(r != Err(()));
-            assert!(t[i][0] == i);
-            assert!(t[i][1] == i);
-            assert!(t[i][2] == i);
+            assert!(t[i][0].fwd == i);
+            assert!(t[i][1].fwd == i);
+            assert!(t[i][2].fwd == i);
         }
         let r = t.add_row(); 
         assert!(r == Err(()));
@@ -185,25 +199,25 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_index_failure(){
-        let mut t: Table<i8> = Table::new(3);
-        t[-1][0] = 1;
+        let mut t: Table<Cell<i8>> = Table::new(3);
+        t[-1][0].fwd = 1;
     }
 
     #[test]
     #[should_panic]
     fn test_get_row_out_of_bounds(){
-        let mut t: Table<u32> = Table::new(3);
+        let mut t: Table<Cell<u32>> = Table::new(3);
         let r = t.add_row();
         assert!(r != Err(()));
         let r = t.add_row();
         assert!(r != Err(()));
-        assert!(t[0][t.m] == 1);
+        assert!(t[0][t.m].fwd == 1);
     }
 
     #[test]
     #[should_panic]
     fn test_get_row_fails(){
-        let t: Table<u32>  = Table::new(3);
-        let _val: u32 = t[2][0];
+        let t: Table<Cell<u32>>  = Table::new(3);
+        let _val: u32 = t[2][0].fwd;
     }
 }
