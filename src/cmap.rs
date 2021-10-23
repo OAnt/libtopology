@@ -1,6 +1,6 @@
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 use std::result::Result;
-use super::table::{Table, TableIndex, Linkable};
+use super::table::{Table, TableIndex};
 
 pub trait CombinatorialMapIndex: TableIndex + Copy {}
 impl<T> CombinatorialMapIndex for T
@@ -14,7 +14,7 @@ pub enum TransformationType {
     Permutation,
 }
 
-pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]> + IndexMut<T, Output=[T]>{
+pub trait CombinatorialMap<T: CombinatorialMapIndex>: Index<T, Output=[T]> {
     fn new_halfedge(& mut self) -> Result<T, ()>;
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize);
     fn get_transformation_type(&self, he: T, transform: & dyn Fn(& dyn CombinatorialMap<T>, T) -> T) -> TransformationType;
@@ -28,8 +28,9 @@ impl<T: CombinatorialMapIndex> CombinatorialMap<T> for Table<T>{
     }
 
     fn link_halfedges(& mut self, he_0: T, he_1: T, level: usize){
-        let val_1 = self[he_1][level];
-        self[he_1][level] = Linkable::link(& mut self[he_0][level], val_1);
+        let tmp: T = self[he_0][level];
+        self[he_0][level] = he_1;
+        self[he_1][level] = tmp;
     }
 
     fn get_transformation_type(&self, he: T, transform: & dyn Fn(& dyn CombinatorialMap<T>, T) -> T) -> TransformationType {
