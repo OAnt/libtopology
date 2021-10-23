@@ -1,12 +1,12 @@
 use std::convert::{TryFrom, TryInto};
-use std::fmt::Display;
+use std::fmt;
 use std::ops;
 use std::result::Result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + Display {}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display {}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + Display {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display {}
 
 pub struct Table<T: TableIndex>  {
     m: usize,
@@ -65,6 +65,41 @@ impl<T: TableIndex> ops::IndexMut<T> for Table<T>{
             Ok(pos) => & mut self.matrix[pos..pos+self.m],
             Err(orig) => panic!("{} cannot be used as an index", orig)
         }
+    }
+}
+
+fn fmt_column_as_row<I, T: fmt::Display>(range: I, width: usize, f: &mut fmt::Formatter) -> fmt::Result 
+where
+    I: IntoIterator<Item=T>
+{
+    for i in range {
+        let res = write!(f, "{:width$} ", i, width=width);
+        match res {
+            Err(e) => return Err(e),
+            _ => {}
+        }
+    }
+    write!(f, "\n")
+}
+
+impl<T: TableIndex> fmt::Display for Table<T>{
+
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let max: f64 = self.len() as f64;
+        let n_digits = max.log10() as usize + 1;
+        let res = fmt_column_as_row(0..self.len(), n_digits, f); 
+        match res {
+            Err(e) => return Err(e),
+            _ => {}
+        }
+        for i in 0..self.m {
+            let res = fmt_column_as_row((0..self.len()).map(|j| self.matrix[self.m * j + i]), n_digits, f);
+            match res {
+                Err(e) => return Err(e),
+                _ => {}
+            }
+        }
+        write!(f, "")
     }
 }
 
