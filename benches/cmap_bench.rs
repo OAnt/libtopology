@@ -10,7 +10,7 @@ fn create_polygon(cmap: & mut Table<u32>, size: u32) -> u32{
 
     let mut prev_he = None;
     for _i in 0..size {
-        let he = cmap.new_halfedge().unwrap();
+        let he = cmap.add_row().unwrap();
         match prev_he {
             Some(_prev_he) => cmap.link_halfedges(_prev_he, he, 0),
             None => {},
