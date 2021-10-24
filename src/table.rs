@@ -23,6 +23,7 @@ impl<L: TableElement> Table<L> {
     pub fn add_row(& mut self) -> Result<L::Type, ()> {
         let size: usize =  self.matrix.len();
         let row = self.n;
+        // For some reason this make the compiled code faster
         assert!(row * self.m == size);
         let can_add = L::Type::try_from(row);
         match can_add {
