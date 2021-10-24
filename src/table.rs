@@ -38,6 +38,33 @@ impl<L: TableElement> Table<L> {
         }
     }
 
+    pub fn add_multiple_rows<'a>(& 'a mut self, n: usize) -> Result<impl Iterator<Item=L::Type> + 'a, ()> {
+        let size: usize = self.matrix.len();
+        let row = self.n;
+        assert!(row * self.m == size);
+        let can_add = {
+            if self.n + n == 0 {
+                L::Type::try_from(0)
+            }else{
+                L::Type::try_from(self.n + n - 1)
+            }
+        };
+        match can_add {
+            Ok(_v) => {
+                self.n += n;
+                Ok((row..self.n).map( move |idx| {
+                    // we already checked the bigger index can be converted
+                    let val = L::Type::try_from(idx).ok().unwrap();
+                    self.matrix.resize(self.matrix.len() + self.m, L::new(val));
+                    val
+                }))
+            }
+            Err(_e) =>  {
+                Err(())
+            }
+        }
+    }
+
     pub fn iter<'a>(& 'a self, start: L::Type, transform: fn(& Self, L::Type) -> L::Type) -> impl Iterator<Item=L::Type> + 'a{
         iter::successors(Some(start), move |he: &L::Type| {
             let next_he = transform(self, *he);
@@ -131,6 +158,50 @@ mod tests {
         assert!(t[0][0] == 0);
         assert!(t[0][1] == 0);
         assert!(t[0][2] == 0);
+    }
+
+    #[test]
+    fn test_add_multiple_rows(){
+        let mut t: Table<i8> = Table::new(2);
+        let mut result: Vec<i8> = Vec::new();
+        match t.add_multiple_rows(128) {
+            Ok(iter) => {
+                for (i, j) in iter.enumerate() {
+                    assert!(i == j as usize);
+                    result.push(j);
+                }
+            }
+            Err(()) => {
+                assert!(false);
+            }
+        };
+        assert!(result.len() == 128);
+        for r in result {
+            assert!(t[r][0] == r);
+            assert!(t[r][0] == r);
+        }
+    }
+
+    #[test]
+    fn test_add_multiple_rows_fails(){
+        let mut t: Table<i8> = Table::new(2);
+        match t.add_multiple_rows(129) {
+            Ok(_iter) => assert!(false),
+            Err(()) => assert!(true)
+        };
+    }
+
+    #[test]
+    fn test_add_multiple_rows_2(){
+        let mut t: Table<i8> = Table::new(2);
+        match t.add_multiple_rows(0) {
+            Ok(iter) => {
+                for _i in iter {
+                    assert!(false);
+                }
+            }
+            Err(()) => assert!(false)
+        };
     }
 
     #[test]

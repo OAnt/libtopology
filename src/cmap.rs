@@ -50,7 +50,6 @@ pub enum TransformationType {
 
 pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[L]>
 {
-    fn new_halfedge(& mut self) -> Result<L::Type, ()>;
     fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize);
     fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType;
     fn is_manifold(&self, level: usize) -> bool;
@@ -58,10 +57,6 @@ pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[
 
 impl<L: Linked> CombinatorialMap<L> for Table<L>
 {
-
-    fn new_halfedge(& mut self) -> Result<L::Type, ()> {
-        self.add_row()
-    }
 
     fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize){
         L::link(self, he_0, he_1, level);
@@ -97,9 +92,9 @@ mod tests {
     use super::*;
 
     fn create_triangle(cmap: & mut Table<u32>) -> [u32; 3] {
-        let he_0 = cmap.new_halfedge().unwrap();
-        let he_1 = cmap.new_halfedge().unwrap();
-        let he_2 = cmap.new_halfedge().unwrap();
+        let he_0 = cmap.add_row().unwrap();
+        let he_1 = cmap.add_row().unwrap();
+        let he_2 = cmap.add_row().unwrap();
         cmap.link_halfedges(he_0, he_1, 0);
         cmap.link_halfedges(he_1, he_2, 0);
         [he_0, he_1, he_2]
@@ -195,8 +190,8 @@ mod tests {
         let mut prev_he_fwd = None;
         let mut prev_he_bwd = None;
         for _i in 0..10 {
-            let he_fwd = fwd.new_halfedge().unwrap();
-            let he_bwd = bwd.new_halfedge().unwrap();
+            let he_fwd = fwd.add_row().unwrap();
+            let he_bwd = bwd.add_row().unwrap();
             match prev_he_fwd {
                 Some(_prev_he) => fwd.link_halfedges(_prev_he, he_fwd, 0),
                 None => {},
