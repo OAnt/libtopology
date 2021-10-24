@@ -6,26 +6,29 @@ use std::result::Result;
 use super::types::TableElement;
 
 pub struct Table<L: TableElement>  {
+    n: usize,
     m: usize,
     matrix: Vec<L>,
 }
 
 impl<L: TableElement> Table<L> {
     pub fn new(m: usize) -> Table<L> {
-        Table {m: m, matrix: Vec::new()}
+        Table {n: 0, m: m, matrix: Vec::new()}
     }
 
     pub fn len(&self) -> usize {
-        self.matrix.len() / self.m
+        self.n
     }
 
     pub fn add_row(& mut self) -> Result<L::Type, ()> {
         let size: usize =  self.matrix.len();
-        let row = size / self.m;
+        let row = self.n;
+        assert!(row * self.m == size);
         let can_add = L::Type::try_from(row);
         match can_add {
             Ok(val) => {
                 self.matrix.resize(size + self.m, L::new(val));
+                self.n += 1;
                 return Ok(val);
             }
             Err(_e) => {
