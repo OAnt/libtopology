@@ -1,6 +1,7 @@
 use std::ops::Index;
 use std::result::Result;
-use super::table::{Table, Linked, Cell};
+use super::table::{Table, Linked};
+use super::types::TableElement;
 
 //#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 //struct Pair<T: TableIndex> {
@@ -46,7 +47,7 @@ pub enum TransformationType {
     Permutation,
 }
 
-pub trait CombinatorialMap<L: Linked>: Index<L::Type, Output=[L]>
+pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[L]>
 {
     fn new_halfedge(& mut self) -> Result<L::Type, ()>;
     fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize);
@@ -93,6 +94,7 @@ impl<L: Linked> CombinatorialMap<L> for Table<L>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::table::Cell;
 
     fn create_triangle(cmap: & mut Table<Cell<u32>>) -> [u32; 3] {
         let he_0 = cmap.new_halfedge().unwrap();

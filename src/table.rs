@@ -3,26 +3,14 @@ use std::fmt;
 use std::iter;
 use std::ops;
 use std::result::Result;
+use super::types::{TableElement, TableIndex};
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
-impl<T> TableIndex for T
-where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
-
-pub trait Linked: Clone + fmt::Display + Copy{
-    type Type: TableIndex;
-    fn new(t: Self::Type) -> Self;
-    fn link(table: & mut Table<Self>, lhs: Self::Type, rhs: Self::Type, level: usize);
-    fn try_from(u: usize) -> Result<Self::Type,  <Self::Type as TryFrom<usize>>::Error>;
-    fn next(&self) -> Self::Type;
-}
-
-pub struct Table<L: Linked>  {
+pub struct Table<L: TableElement>  {
     m: usize,
     matrix: Vec<L>,
 }
 
-impl<L: Linked> Table<L> {
+impl<L: TableElement> Table<L> {
     pub fn new(m: usize) -> Table<L> {
         Table {m: m, matrix: Vec::new()}
     }
@@ -66,7 +54,7 @@ impl<L: Linked> Table<L> {
     }
 }
 
-impl<L: Linked> ops::Index<L::Type> for Table<L>{
+impl<L: TableElement> ops::Index<L::Type> for Table<L>{
     type Output = [L];
 
     fn index(&self, row: L::Type) -> &[L] {
@@ -78,7 +66,7 @@ impl<L: Linked> ops::Index<L::Type> for Table<L>{
     }
 }
 
-impl<L: Linked> ops::IndexMut<L::Type> for Table<L>{
+impl<L: TableElement> ops::IndexMut<L::Type> for Table<L>{
     fn index_mut(& mut self, row: L::Type) -> & mut [L] {
         let can_access = self.get_row_pos(row);
         match can_access {
@@ -102,7 +90,7 @@ where
     write!(f, "\n")
 }
 
-impl<L: Linked> fmt::Display for Table<L>{
+impl<L: TableElement> fmt::Display for Table<L>{
 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let max: f64 = self.len() as f64;
@@ -123,6 +111,11 @@ impl<L: Linked> fmt::Display for Table<L>{
     }
 }
 
+pub trait Linked: TableElement{
+    fn link(table: & mut Table<Self>, lhs: Self::Type, rhs: Self::Type, level: usize);
+    fn next(&self) -> Self::Type;
+}
+
 #[derive(Copy, Clone)]
 pub struct Cell<T: TableIndex> {
     fwd: T,
@@ -134,21 +127,19 @@ impl<T: TableIndex> fmt::Display for Cell<T> {
     }
 }
 
-impl<T: TableIndex> Linked for Cell<T> {
+impl<T: TableIndex> TableElement for Cell<T>{
     type Type = T;
 
     fn new(t: T) -> Cell<T> {
         Cell{fwd: t}
     }
+}
 
+impl<T: TableIndex> Linked for Cell<T> {
     fn link(table: & mut Table<Cell<T> >, lhs: T, rhs: T, level: usize){
         let tmp: T = table[lhs][level].fwd;
         table[lhs][level].fwd = rhs;
         table[rhs][level].fwd = tmp;
-    }
-
-    fn try_from(u: usize) -> Result<T,  <T as TryFrom<usize>>::Error>{
-        T::try_from(u)
     }
     
     fn next(&self) -> T {
