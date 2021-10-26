@@ -3,43 +3,6 @@ use super::list::{Linked, Result};
 use super::table::Table;
 use super::types::TableElement;
 
-//#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-//struct Pair<T: TableIndex> {
-    //fwd: T,
-    //bwd: T,
-//}
-
-//impl<T: TableIndex> fmt::Display for Pair<T> {
-    //fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //write!(f, "{} {}", self.fwd, self.bwd)
-    //}
-//}
-
-//impl<T: TableIndex> convert::TryFrom<usize> for Pair<T> {
-    //type Error = <T as convert::TryFrom<usize>>::Error;
-    //fn try_from(val: usize) -> Result<Self, Self::Error> {
-        //let cval = T::try_from(val);
-        //match cval {
-            //Ok(t) => Ok(Pair{fwd: t, bwd: t}),
-            //Err(e) => Err(e)
-        //}
-    //}
-//}
-
-//impl<T: TableIndex> convert::TryInto<usize> for Pair<T> {
-    //type Error = <T as convert::TryInto<usize>>::Error;
-    //fn try_into(self) -> Result<usize, Self::Error> {
-        //self.fwd.try_into()
-    //}
-//}
-
-//impl<T: TableIndex> Linkable for Pair<T> {
-    //type Input = T;
-    //fn link(table: & mut Table<Pair<T>>, lhs: T, rhs: T, level: usize){
-        //let next: Pair<T> = table[lhs][level];
-    //}
-//}
-
 #[derive(PartialEq)]
 pub enum TransformationType {
     Identity,
