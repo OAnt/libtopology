@@ -9,6 +9,7 @@ where
 pub trait TableElement: Clone + fmt::Display + Copy {
     type Type: TableIndex;
     fn new(t: Self::Type) -> Self;
+    #[inline]
     fn try_from(u: usize) -> Result<Self::Type,  <Self::Type as TryFrom<usize>>::Error> {
         Self::Type::try_from(u)
     }
@@ -18,6 +19,7 @@ macro_rules! table_element_impl{
     ($($t:ty)*) => ($(
         impl TableElement for $t {
             type Type = $t;
+            #[inline]
             fn new(t: $t) -> $t{
                 t
             }

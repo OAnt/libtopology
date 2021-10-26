@@ -1,5 +1,4 @@
 use std::ops::Index;
-use std::result::Result;
 use super::list::Linked;
 use super::table::Table;
 use super::types::TableElement;
