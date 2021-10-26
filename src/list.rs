@@ -1,7 +1,6 @@
 use std::fmt;
 use std::result;
-use super::table::Table;
-use super::types::{TableIndex, TableElement};
+use super::types::{TableIndex, TableElement, Container};
 
 pub type Result<T> = result::Result<T, LinkError>;
 
@@ -9,7 +8,7 @@ pub type Result<T> = result::Result<T, LinkError>;
 pub struct LinkError;
 
 pub trait Linked: TableElement{
-    fn link(table: & mut Table<Self>, lhs: Self::Type, rhs: Self::Type, level: usize) -> Result<()>;
+    fn link(table: & mut dyn Container<Self>, lhs: Self::Type, rhs: Self::Type, level: usize) -> Result<()>;
     fn next(&self) -> Self::Type;
 }
 
@@ -17,7 +16,7 @@ macro_rules! linked_impl {
     ($($t:ty)*) => ($(
         impl Linked for $t {
             #[inline]
-            fn link(table: & mut Table<$t>, lhs: $t, rhs: $t, level: usize) -> Result<()>{
+            fn link(table: & mut dyn Container<$t>, lhs: $t, rhs: $t, level: usize) -> Result<()>{
                 if(table[rhs][level] == rhs){
                     let tmp: $t = table[lhs][level];
                     table[lhs][level] = rhs;
@@ -39,7 +38,7 @@ macro_rules! linked_impl {
 linked_impl! { usize u8 u16 u32 u64 i8 i16 i32 i64 isize }
 
 pub trait DoublyLinked: Linked {
-    fn unlink(table: & mut Table<Self>, rhs: Self::Type, level: usize);
+    fn unlink(table: & mut dyn Container<Self>, rhs: Self::Type, level: usize);
 }
 
 #[derive(Copy, Clone)]
@@ -63,7 +62,7 @@ impl<T: TableIndex> TableElement for DoublyLinkedNode<T>{
 }
 
 impl<T: TableIndex> Linked for DoublyLinkedNode<T> {
-    fn link(table: & mut Table<DoublyLinkedNode<T> >, lhs: T, rhs: T, level: usize) -> Result<()>{
+    fn link(table: & mut dyn Container<DoublyLinkedNode<T>>, lhs: T, rhs: T, level: usize) -> Result<()>{
         if table[rhs][level].fwd == rhs && table[rhs][level].bwd == rhs {
             let next = table[lhs][level].fwd;
             table[next][level].bwd = rhs;
@@ -82,7 +81,7 @@ impl<T: TableIndex> Linked for DoublyLinkedNode<T> {
 }
 
 impl<T: TableIndex> DoublyLinked for DoublyLinkedNode<T> {
-    fn unlink(table: & mut Table<DoublyLinkedNode<T> >, idx: T, level: usize){
+    fn unlink(table: & mut dyn Container<DoublyLinkedNode<T> >, idx: T, level: usize){
         let elem = table[idx][level];
         table[elem.fwd][level].bwd = elem.bwd;
         table[elem.bwd][level].fwd = elem.fwd;
@@ -94,6 +93,7 @@ impl<T: TableIndex> DoublyLinked for DoublyLinkedNode<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::table::Table;
     
     #[test]
     fn test_integer_list () {

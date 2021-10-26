@@ -1,7 +1,6 @@
-use std::ops::Index;
 use super::list::{DoublyLinked, Linked, Result};
 use super::table::Table;
-use super::types::TableElement;
+use super::types::Container;
 
 #[derive(PartialEq)]
 pub enum TransformationType {
@@ -10,7 +9,7 @@ pub enum TransformationType {
     Permutation,
 }
 
-pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[L]>
+pub trait CombinatorialMap<L: Linked>: Container<L>
 {
     fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()>;
     fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType;

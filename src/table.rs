@@ -3,7 +3,7 @@ use std::fmt;
 use std::iter;
 use std::ops;
 use std::result::Result;
-use super::types::TableElement;
+use super::types::{TableElement, Container};
 
 pub struct Table<L: TableElement>  {
     n: usize,
@@ -104,6 +104,8 @@ impl<L: TableElement> ops::IndexMut<L::Type> for Table<L>{
         }
     }
 }
+
+impl<T: TableElement> Container<T> for Table<T> {}
 
 fn fmt_column_as_row<I, T: fmt::Display>(range: I, width: usize, f: &mut fmt::Formatter) -> fmt::Result 
 where

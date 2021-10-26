@@ -1,5 +1,6 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::ops;
 
 pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
 impl<T> TableIndex for T
@@ -28,3 +29,5 @@ macro_rules! table_element_impl{
 }
 
 table_element_impl! { usize u8 u16 u32 u64 i8 i16 i32 i64 isize }
+
+pub trait Container<T: TableElement>: ops::Index<T::Type, Output=[T]> + ops::IndexMut<T::Type> {}
