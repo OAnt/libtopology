@@ -32,29 +32,29 @@ pub trait DoublyLinked: Linked {
 }
 
 #[derive(Copy, Clone)]
-pub struct DoubleCell<T: TableIndex> {
+pub struct DoublyLinkedNode<T: TableIndex> {
     fwd: T,
     bwd: T,
 }
 
-impl<T: TableIndex> fmt::Display for DoubleCell<T> {
+impl<T: TableIndex> fmt::Display for DoublyLinkedNode<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.fwd)
     }
 }
 
-impl<T: TableIndex> TableElement for DoubleCell<T>{
+impl<T: TableIndex> TableElement for DoublyLinkedNode<T>{
     type Type = T;
 
-    fn new(t: T) -> DoubleCell<T> {
-        DoubleCell{fwd: t, bwd: t}
+    fn new(t: T) -> DoublyLinkedNode<T> {
+        DoublyLinkedNode{fwd: t, bwd: t}
     }
 }
 
-impl<T: TableIndex> Linked for DoubleCell<T> {
-    fn link(table: & mut Table<DoubleCell<T> >, lhs: T, rhs: T, level: usize){
-        let mut next = table[table[lhs][level].fwd][level];
-        next.bwd = rhs;
+impl<T: TableIndex> Linked for DoublyLinkedNode<T> {
+    fn link(table: & mut Table<DoublyLinkedNode<T> >, lhs: T, rhs: T, level: usize){
+        let next = table[lhs][level].fwd;
+        table[next][level].bwd = rhs;
         table[rhs][level].fwd = table[lhs][level].fwd;
         table[rhs][level].bwd = lhs;
         table[lhs][level].fwd = rhs;
@@ -65,13 +65,11 @@ impl<T: TableIndex> Linked for DoubleCell<T> {
     }
 }
 
-impl<T: TableIndex> DoublyLinked for DoubleCell<T> {
-    fn unlink(table: & mut Table<DoubleCell<T> >, idx: T, level: usize){
+impl<T: TableIndex> DoublyLinked for DoublyLinkedNode<T> {
+    fn unlink(table: & mut Table<DoublyLinkedNode<T> >, idx: T, level: usize){
         let elem = table[idx][level];
-        let mut prec = table[elem.bwd][level];
-        let mut next = table[elem.fwd][level];
-        next.fwd = elem.fwd;
-        prec.bwd = elem.bwd;
+        table[elem.fwd][level].bwd = elem.bwd;
+        table[elem.bwd][level].fwd = elem.fwd;
     }
 }
 
@@ -91,6 +89,49 @@ mod tests {
         assert!(table[0][0] == 2);
         assert!(table[1][0] == 0);
         assert!(table[2][0] == 1);
+    }
+
+    #[test]
+    fn test_doubly_linked(){
+        let mut table: Table<DoublyLinkedNode<u8>> = Table::new(1);
+        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
+        assert!(cnt == 3);
+        DoublyLinkedNode::link(& mut table, 0, 1, 0);
+        assert!(table[0][0].fwd == 1);
+        assert!(table[0][0].bwd == 1);
+        assert!(table[1][0].fwd == 0);
+        assert!(table[1][0].bwd == 0);
+        DoublyLinkedNode::link(& mut table, 0, 2, 0);
+        assert!(table[0][0].fwd == 2);
+        assert!(table[0][0].bwd == 1);
+        assert!(table[1][0].fwd == 0);
+        assert!(table[1][0].bwd == 2);
+        assert!(table[2][0].fwd == 1);
+        assert!(table[2][0].bwd == 0);
+        DoublyLinkedNode::unlink(& mut table, 1, 0);
+        assert!(table[0][0].fwd == 2);
+        assert!(table[0][0].bwd == 2);
+        assert!(table[2][0].fwd == 0);
+        assert!(table[2][0].bwd == 0);
+        DoublyLinkedNode::link(& mut table, 2, 1, 0);
+        assert!(table[0][0].fwd == 2);
+        assert!(table[0][0].bwd == 1);
+        assert!(table[1][0].fwd == 0);
+        assert!(table[1][0].bwd == 2);
+        assert!(table[2][0].fwd == 1);
+        assert!(table[2][0].bwd == 0);
+        DoublyLinkedNode::unlink(& mut table, 0, 0);
+        assert!(table[1][0].fwd == 2);
+        assert!(table[1][0].bwd == 2);
+        assert!(table[2][0].fwd == 1);
+        assert!(table[2][0].bwd == 1);
+        DoublyLinkedNode::link(& mut table, 1, 0, 0);
+        assert!(table[0][0].fwd == 2);
+        assert!(table[0][0].bwd == 1);
+        assert!(table[1][0].fwd == 0);
+        assert!(table[1][0].bwd == 2);
+        assert!(table[2][0].fwd == 1);
+        assert!(table[2][0].bwd == 0);
     }
 
 }
