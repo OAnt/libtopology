@@ -1,5 +1,5 @@
 use std::ops::Index;
-use super::list::Linked;
+use super::list::{Linked, Result};
 use super::table::Table;
 use super::types::TableElement;
 
@@ -49,7 +49,7 @@ pub enum TransformationType {
 
 pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[L]>
 {
-    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize);
+    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()>;
     fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType;
     fn is_manifold(&self, level: usize) -> bool;
 }
@@ -57,8 +57,8 @@ pub trait CombinatorialMap<L: Linked>: Index<<L as TableElement>::Type, Output=[
 impl<L: Linked> CombinatorialMap<L> for Table<L>
 {
 
-    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize){
-        L::link(self, he_0, he_1, level);
+    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()>{
+        L::link(self, he_0, he_1, level)
     }
 
     fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType {
@@ -94,22 +94,22 @@ mod tests {
         let he_0 = cmap.add_row().unwrap();
         let he_1 = cmap.add_row().unwrap();
         let he_2 = cmap.add_row().unwrap();
-        cmap.link_halfedges(he_0, he_1, 0);
-        cmap.link_halfedges(he_1, he_2, 0);
+        assert!(cmap.link_halfedges(he_0, he_1, 0).is_ok());
+        assert!(cmap.link_halfedges(he_1, he_2, 0).is_ok());
         [he_0, he_1, he_2]
     }
 
     fn create_tetrahedron(cmap: & mut Table<u32>) -> u32 {
         let triangle_0 = create_triangle(cmap);
         let triangle_1 = create_triangle(cmap);
-        cmap.link_halfedges(triangle_0[0], triangle_1[0], 1);
+        assert!(cmap.link_halfedges(triangle_0[0], triangle_1[0], 1).is_ok());
         let triangle_2 = create_triangle(cmap);
-        cmap.link_halfedges(triangle_0[1], triangle_2[0], 1);
-        cmap.link_halfedges(triangle_1[2], triangle_2[1], 1);
+        assert!(cmap.link_halfedges(triangle_0[1], triangle_2[0], 1).is_ok());
+        assert!(cmap.link_halfedges(triangle_1[2], triangle_2[1], 1).is_ok());
         let triangle_3 = create_triangle(cmap);
-        cmap.link_halfedges(triangle_0[2], triangle_3[0], 1);
-        cmap.link_halfedges(triangle_1[1], triangle_3[2], 1);
-        cmap.link_halfedges(triangle_2[2], triangle_3[1], 1);
+        assert!(cmap.link_halfedges(triangle_0[2], triangle_3[0], 1).is_ok());
+        assert!(cmap.link_halfedges(triangle_1[1], triangle_3[2], 1).is_ok());
+        assert!(cmap.link_halfedges(triangle_2[2], triangle_3[1], 1).is_ok());
         return triangle_0[0];
     }
 
@@ -143,7 +143,7 @@ mod tests {
         let mut cmap: Table<u32> = Table::new(2);
         let triangle_0 = create_triangle(& mut cmap);
         let triangle_1 = create_triangle(& mut cmap);
-        cmap.link_halfedges(triangle_0[0], triangle_1[0], 1);
+        assert!(cmap.link_halfedges(triangle_0[0], triangle_1[0], 1).is_ok());
         assert!(cmap.get_transformation_type(triangle_0[0], &next_in_face) == TransformationType::Permutation);
         assert!(cmap.get_transformation_type(triangle_0[0], &next_over_edge) == TransformationType::Involution);
         assert!(cmap.get_transformation_type(triangle_0[1], &next_in_face) == TransformationType::Permutation);
@@ -180,29 +180,5 @@ mod tests {
             }
         }
         assert!(n_he == 3);
-    }
-
-    #[test]
-    fn test_two_way(){
-        let mut fwd: Table<u32> = Table::new(2);
-        let mut bwd: Table<u32> = Table::new(2);
-        let mut prev_he_fwd = None;
-        let mut prev_he_bwd = None;
-        for _i in 0..10 {
-            let he_fwd = fwd.add_row().unwrap();
-            let he_bwd = bwd.add_row().unwrap();
-            match prev_he_fwd {
-                Some(_prev_he) => fwd.link_halfedges(_prev_he, he_fwd, 0),
-                None => {},
-            }
-            match prev_he_bwd {
-                Some(_prev_he) => bwd.link_halfedges(he_bwd, _prev_he, 0),
-                None => {},
-            }
-            prev_he_fwd = Some(he_fwd);
-            prev_he_bwd = Some(he_bwd);
-        }
-        println!("{}", fwd);
-        println!("{}", bwd);
     }
 }
