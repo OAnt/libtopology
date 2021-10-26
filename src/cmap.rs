@@ -1,5 +1,5 @@
 use std::ops::Index;
-use super::list::{Linked, Result};
+use super::list::{DoublyLinked, Linked, Result};
 use super::table::Table;
 use super::types::TableElement;
 
@@ -46,6 +46,17 @@ impl<L: Linked> CombinatorialMap<L> for Table<L>
             }
         }
         return true;
+    }
+}
+
+pub trait UnlinkableCombinatorialMap<L: DoublyLinked>: CombinatorialMap<L> {
+    fn unlink_halfedge(& mut self, he: L::Type, level: usize);
+}
+
+impl<L: DoublyLinked> UnlinkableCombinatorialMap<L> for Table<L>
+{
+    fn unlink_halfedge(& mut self, he: L::Type, level: usize) {
+        L::unlink(self, he, level);
     }
 }
 
