@@ -20,7 +20,7 @@ impl<L: TableElement> Table<L> {
         self.n
     }
 
-    pub fn add_row(& mut self) -> Result<L::Type, ()> {
+    pub fn add_row(& mut self) -> Result<L::Type, <L::Type as TryFrom<usize>>::Error> {
         let size: usize =  self.matrix.len();
         let row = self.n;
         // For some reason this make the compiled code faster
@@ -32,13 +32,13 @@ impl<L: TableElement> Table<L> {
                 self.n += 1;
                 return Ok(val);
             }
-            Err(_e) => {
-                return Err(());
+            Err(e) => {
+                return Err(e);
             }
         }
     }
 
-    pub fn add_multiple_rows<'a>(& 'a mut self, n: usize) -> Result<impl Iterator<Item=L::Type> + 'a, ()> {
+    pub fn add_multiple_rows<'a>(& 'a mut self, n: usize) -> Result<impl Iterator<Item=L::Type> + 'a, <L::Type as TryFrom<usize>>::Error> {
         let size: usize = self.matrix.len();
         let row = self.n;
         assert!(row * self.m == size);
@@ -59,8 +59,8 @@ impl<L: TableElement> Table<L> {
                     val
                 }))
             }
-            Err(_e) =>  {
-                Err(())
+            Err(e) =>  {
+                Err(e)
             }
         }
     }
@@ -154,7 +154,7 @@ mod tests {
     fn test_get_row(){
         let mut t: Table<u32> = Table::new(3);
         let r = t.add_row();
-        assert!(r != Err(()));
+        assert!(r.is_ok());
         assert!(t[0][0] == 0);
         assert!(t[0][1] == 0);
         assert!(t[0][2] == 0);
@@ -171,7 +171,7 @@ mod tests {
                     result.push(j);
                 }
             }
-            Err(()) => {
+            Err(_e) => {
                 assert!(false);
             }
         };
@@ -187,7 +187,7 @@ mod tests {
         let mut t: Table<i8> = Table::new(2);
         match t.add_multiple_rows(129) {
             Ok(_iter) => assert!(false),
-            Err(()) => assert!(true)
+            Err(_e) => assert!(true)
         };
     }
 
@@ -200,7 +200,7 @@ mod tests {
                     assert!(false);
                 }
             }
-            Err(()) => assert!(false)
+            Err(_e) => assert!(false)
         };
     }
 
@@ -208,7 +208,7 @@ mod tests {
     fn test_edit_row(){
         let mut t: Table<u32> = Table::new(3);
         let r = t.add_row();
-        assert!(r != Err(()));
+        assert!(r.is_ok());
         t[0][0] = 2;
         t[0][1] = 3;
         t[0][2] = 4;
@@ -222,13 +222,13 @@ mod tests {
         let mut t: Table<u8> = Table::new(3);
         for i in 0..=255 {
             let r = t.add_row();
-            assert!(r != Err(()));
+            assert!(r.is_ok());
             assert!(t[i][0] == i);
             assert!(t[i][1] == i);
             assert!(t[i][2] == i);
         }
         let r = t.add_row(); 
-        assert!(r == Err(()));
+        assert!(r.is_err());
     }
 
     #[test]
@@ -243,9 +243,9 @@ mod tests {
     fn test_get_row_out_of_bounds(){
         let mut t: Table<u32> = Table::new(3);
         let r = t.add_row();
-        assert!(r != Err(()));
+        assert!(r.is_err());
         let r = t.add_row();
-        assert!(r != Err(()));
+        assert!(r.is_err());
         assert!(t[0][t.m] == 1);
     }
 
