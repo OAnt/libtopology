@@ -165,4 +165,17 @@ mod tests {
         assert!(table[2][0].bwd == 0);
     }
 
+    #[test]
+    fn test_multiple_links_2(){
+        let mut table: Table<DoublyLinkedNode<u32>> = Table::new(1);
+        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
+        assert!(cnt == 3);
+        assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_ok());
+        assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_err());
+        assert!(DoublyLinkedNode::link(& mut table, 1, 0, 0).is_err());
+        assert!(DoublyLinkedNode::link(& mut table, 0, 2, 0).is_ok());
+        assert!(DoublyLinkedNode::link(& mut table, 1, 0, 0).is_err());
+        assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_err());
+    }
+
 }
