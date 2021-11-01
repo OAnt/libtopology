@@ -30,4 +30,7 @@ macro_rules! table_element_impl{
 
 table_element_impl! { usize u8 u16 u32 u64 i8 i16 i32 i64 isize }
 
-pub trait Container<T: TableElement>: ops::Index<T::Type, Output=[T]> + ops::IndexMut<T::Type> {}
+pub trait Container<T: TableElement>: ops::Index<T::Type, Output=[T]> + ops::IndexMut<T::Type> 
+{
+    fn len(&self) -> usize;
+}

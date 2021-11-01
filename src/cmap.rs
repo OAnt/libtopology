@@ -11,19 +11,11 @@ pub enum TransformationType {
 
 pub trait CombinatorialMap<L: Linked>: Container<L>
 {
-    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()>;
-    fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType;
-    fn is_manifold(&self, level: usize) -> bool;
-}
-
-impl<L: Linked> CombinatorialMap<L> for Table<L>
-{
-
-    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()>{
+    fn link_halfedges(& mut self, he_0: L::Type, he_1: L::Type, level: usize) -> Result<()> where Self: Sized{
         L::link(self, he_0, he_1, level)
     }
 
-    fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType {
+    fn get_transformation_type(&self, he: L::Type, transform: & dyn Fn(& dyn CombinatorialMap<L>, L::Type) -> L::Type) -> TransformationType where Self: Sized{
         let he_prime = transform(self, he);
         if he_prime == he {
            return TransformationType::Identity;
@@ -36,7 +28,7 @@ impl<L: Linked> CombinatorialMap<L> for Table<L>
         }
     }
 
-    fn is_manifold(&self, level: usize) -> bool {
+    fn is_manifold(&self, level: usize) -> bool where Self: Sized{
         for idx in 0..self.len() {
             let he: L::Type = L::try_from(idx).ok().unwrap();
             // if we could not convert we would not have been able to add the row already
@@ -49,15 +41,12 @@ impl<L: Linked> CombinatorialMap<L> for Table<L>
 }
 
 pub trait UnlinkableCombinatorialMap<L: DoublyLinked>: CombinatorialMap<L> {
-    fn unlink_halfedge(& mut self, he: L::Type, level: usize);
-}
-
-impl<L: DoublyLinked> UnlinkableCombinatorialMap<L> for Table<L>
-{
-    fn unlink_halfedge(& mut self, he: L::Type, level: usize) {
+    fn unlink_halfedge(& mut self, he: L::Type, level: usize) where Self: Sized{
         L::unlink(self, he, level);
     }
 }
+
+impl<L: Linked> CombinatorialMap<L> for Table<L>{}
 
 #[cfg(test)]
 mod tests {

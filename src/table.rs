@@ -16,10 +16,6 @@ impl<L: TableElement> Table<L> {
         Table {n: 0, m: m, matrix: Vec::new()}
     }
 
-    pub fn len(&self) -> usize {
-        self.n
-    }
-
     pub fn add_row(& mut self) -> Result<L::Type, <L::Type as TryFrom<usize>>::Error> {
         let size: usize =  self.matrix.len();
         let row = self.n;
@@ -105,7 +101,11 @@ impl<L: TableElement> ops::IndexMut<L::Type> for Table<L>{
     }
 }
 
-impl<T: TableElement> Container<T> for Table<T> {}
+impl<T: TableElement> Container<T> for Table<T> {
+    fn len(&self) -> usize {
+        self.n
+    }
+}
 
 fn fmt_column_as_row<I, T: fmt::Display>(range: I, width: usize, f: &mut fmt::Formatter) -> fmt::Result 
 where
