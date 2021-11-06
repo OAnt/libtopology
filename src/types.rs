@@ -1,17 +1,21 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::ops;
+use std::result;
 
-pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + 'static {}
 impl<T> TableIndex for T
 where
-    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq {}
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + 'static {}
 
-pub trait TableElement: Clone + fmt::Display + Copy {
+pub type ConversionError<T> = <T as TryFrom<usize>>::Error;
+pub type ConversionResult<T> = result::Result<T, ConversionError<T>>;
+
+pub trait TableElement: Clone + fmt::Display + Copy + 'static {
     type Type: TableIndex;
     fn new(t: Self::Type) -> Self;
     #[inline]
-    fn try_from(u: usize) -> Result<Self::Type,  <Self::Type as TryFrom<usize>>::Error> {
+    fn try_from(u: usize) -> ConversionResult<Self::Type> {
         Self::Type::try_from(u)
     }
 }

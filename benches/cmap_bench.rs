@@ -1,6 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use libtopology::cmap::CombinatorialMap;
 use libtopology::table::Table;
+use libtopology::list::Linked;
 
 fn next_helfedge_in_face(cmap: & Table<u32>, he: u32) -> u32{
     cmap[he][0]
@@ -55,8 +56,22 @@ fn create_polygon_no_out(size: u32){
     create_polygon(& mut cmap, size);
 }
 
+fn create_polygon_2(size: u32){
+    let mut cmap: Table<u32> = Table::new(2);
+    let mut prev_he = None;
+    let (view, hes) = cmap.add_multiple_rows(size as usize).unwrap();
+    for he in hes {
+        match prev_he {
+            Some(_prev_he) => assert!(<u32 as Linked>::link(view, _prev_he, he, 0).is_ok()),
+            None => {},
+        }
+        prev_he = Some(he)
+    }
+}
+
 fn create_polygon_benchmark(c: & mut Criterion){
     c.bench_function("Create-polygon", |b| b.iter(|| create_polygon_no_out(100)));
+    c.bench_function("Create-polygon 2", |b| b.iter(|| create_polygon_2(100)));
 }
 
 criterion_group!(benches, level_0_benchmark, create_polygon_benchmark);

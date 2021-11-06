@@ -3,7 +3,7 @@ use std::fmt;
 use std::iter;
 use std::ops;
 use std::result::Result;
-use super::types::{TableElement, Container};
+use super::types::{TableElement, Container, ConversionResult, ConversionError};
 
 pub struct Table<L: TableElement>  {
     n: usize,
@@ -16,7 +16,11 @@ impl<L: TableElement> Table<L> {
         Table {n: 0, m: m, matrix: Vec::new()}
     }
 
-    pub fn add_row(& mut self) -> Result<L::Type, <L::Type as TryFrom<usize>>::Error> {
+    fn as_container(& mut self) -> * mut dyn Container<L> {
+        self
+    }
+
+    pub fn add_row(& mut self) -> ConversionResult<L::Type> {
         let size: usize =  self.matrix.len();
         let row = self.n;
         // For some reason this make the compiled code faster
@@ -34,7 +38,7 @@ impl<L: TableElement> Table<L> {
         }
     }
 
-    pub fn add_multiple_rows<'a>(& 'a mut self, n: usize) -> Result<impl Iterator<Item=L::Type> + 'a, <L::Type as TryFrom<usize>>::Error> {
+    pub fn add_multiple_rows<'a>(& 'a mut self, n: usize) -> Result<(&mut dyn Container<L>, impl Iterator<Item=L::Type> + 'a), ConversionError<L::Type>> {
         let size: usize = self.matrix.len();
         let row = self.n;
         assert!(row * self.m == size);
@@ -48,12 +52,23 @@ impl<L: TableElement> Table<L> {
         match can_add {
             Ok(_v) => {
                 self.n += n;
-                Ok((row..self.n).map( move |idx| {
-                    // we already checked the bigger index can be converted
-                    let val = L::Type::try_from(idx).ok().unwrap();
-                    self.matrix.resize(self.matrix.len() + self.m, L::new(val));
-                    val
-                }))
+                // I want to be able to link halfedges while adding them,
+                // this would normally require two mutable borrows if done
+                // unsafely by the caller. This would let him add other rows
+                // from inside an iteration that is already adding some, this
+                // is what I want to avoid, instead I provide the caller with
+                // a simpler "view" on the table that can be used to link
+                // halfedges but not add them.
+                let c: *mut dyn Container<L> = self.as_container();
+                let it = (row..self.n).map( move |idx| {
+                        // we already checked the bigger index can be converted
+                        let val = L::Type::try_from(idx).ok().unwrap();
+                        self.matrix.resize(self.matrix.len() + self.m, L::new(val));
+                        val
+                    });
+                unsafe{
+                    Ok((&mut*c, it))
+                }
             }
             Err(e) =>  {
                 Err(e)
@@ -167,9 +182,11 @@ mod tests {
         let mut t: Table<i8> = Table::new(2);
         let mut result: Vec<i8> = Vec::new();
         match t.add_multiple_rows(128) {
-            Ok(iter) => {
-                for (i, j) in iter.enumerate() {
+            Ok((c, iter)) => {
+                for (i,  j) in iter.enumerate() {
                     assert!(i == j as usize);
+                    assert!(c[j][0] == j);
+                    assert!(c[j][1] == j);
                     result.push(j);
                 }
             }
@@ -180,7 +197,7 @@ mod tests {
         assert!(result.len() == 128);
         for r in result {
             assert!(t[r][0] == r);
-            assert!(t[r][0] == r);
+            assert!(t[r][1] == r);
         }
     }
 
@@ -197,7 +214,7 @@ mod tests {
     fn test_add_multiple_rows_2(){
         let mut t: Table<i8> = Table::new(2);
         match t.add_multiple_rows(0) {
-            Ok(iter) => {
+            Ok((_c, iter)) => {
                 for _i in iter {
                     assert!(false);
                 }
