@@ -16,8 +16,16 @@ impl<L: TableElement> Table<L> {
         Table {n: 0, m: m, matrix: Vec::new()}
     }
 
+    pub fn m(&self) -> usize {
+        self.m
+    }
+
     fn as_container(& mut self) -> * mut dyn Container<L> {
         self
+    }
+
+    pub fn remove_rows(& mut self, n: usize){
+        self.matrix.truncate(self.matrix.len() - n * self.m)
     }
 
     pub fn add_row(& mut self) -> ConversionResult<L::Type> {

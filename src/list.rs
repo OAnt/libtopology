@@ -98,8 +98,8 @@ mod tests {
     #[test]
     fn test_integer_list () {
         let mut table: Table<u32> = Table::new(1);
-        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
-        assert!(cnt == 3);
+        let (_c, it) = table.add_multiple_rows(3).ok().unwrap();
+        assert!(it.count() == 3);
         assert!(u32::link(& mut table, 0, 1, 0).is_ok());
         assert!(table[0][0] == 1);
         assert!(table[1][0] == 0);
@@ -112,8 +112,8 @@ mod tests {
     #[test]
     fn test_multiple_links(){
         let mut table: Table<u32> = Table::new(1);
-        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
-        assert!(cnt == 3);
+        let (_c, it) = table.add_multiple_rows(3).ok().unwrap();
+        assert!(it.count() == 3);
         assert!(u32::link(& mut table, 0, 1, 0).is_ok());
         assert!(u32::link(& mut table, 0, 1, 0).is_err());
         assert!(u32::link(& mut table, 1, 0, 0).is_err());
@@ -125,8 +125,8 @@ mod tests {
     #[test]
     fn test_doubly_linked(){
         let mut table: Table<DoublyLinkedNode<u8>> = Table::new(1);
-        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
-        assert!(cnt == 3);
+        let (_c, it) = table.add_multiple_rows(3).ok().unwrap();
+        assert!(it.count() == 3);
         assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_ok());
         assert!(table[0][0].fwd == 1);
         assert!(table[0][0].bwd == 1);
@@ -168,8 +168,8 @@ mod tests {
     #[test]
     fn test_multiple_links_2(){
         let mut table: Table<DoublyLinkedNode<u32>> = Table::new(1);
-        let cnt = table.add_multiple_rows(3).ok().unwrap().count();
-        assert!(cnt == 3);
+        let (_c, it) = table.add_multiple_rows(3).ok().unwrap();
+        assert!(it.count() == 3);
         assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_ok());
         assert!(DoublyLinkedNode::link(& mut table, 0, 1, 0).is_err());
         assert!(DoublyLinkedNode::link(& mut table, 1, 0, 0).is_err());
