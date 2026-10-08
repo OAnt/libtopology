@@ -1,0 +1,40 @@
+use std::convert::{TryFrom, TryInto};
+use std::fmt;
+use std::ops;
+use std::result;
+
+pub trait TableIndex: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + 'static {}
+impl<T> TableIndex for T
+where
+    T: TryFrom<usize> + TryInto<usize> + Clone + Copy + fmt::Display + Eq + 'static {}
+
+pub type ConversionError<T> = <T as TryFrom<usize>>::Error;
+pub type ConversionResult<T> = result::Result<T, ConversionError<T>>;
+
+pub trait TableElement: Clone + fmt::Display + Copy + 'static {
+    type Type: TableIndex;
+    fn new(t: Self::Type) -> Self;
+    #[inline]
+    fn try_from(u: usize) -> ConversionResult<Self::Type> {
+        Self::Type::try_from(u)
+    }
+}
+
+macro_rules! table_element_impl{
+    ($($t:ty)*) => ($(
+        impl TableElement for $t {
+            type Type = $t;
+            #[inline]
+            fn new(t: $t) -> $t{
+                t
+            }
+        }
+    )*)
+}
+
+table_element_impl! { usize u8 u16 u32 u64 i8 i16 i32 i64 isize }
+
+pub trait Container<T: TableElement>: ops::Index<T::Type, Output=[T]> + ops::IndexMut<T::Type> 
+{
+    fn len(&self) -> usize;
+}
